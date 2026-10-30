@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="sr-Cyrl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Затезна камата ЦГ</title>
+<meta name="description" content="Обрачун законске затезне камате по прописима Црне Горе — офлајн, подаци остају на уређају.">
+<meta name="theme-color" content="#183e55">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top no-print">
+  <a href="#/" class="brand"><img src="icons/icon-192.png" alt="" width="28" height="28"><span data-t="Затезна камата ЦГ">Затезна камата ЦГ</span></a>
+  <span id="crumb" class="crumb"></span>
+  <nav class="menu">
+    <a href="#/" data-t="Предмети">Предмети</a>
+    <a href="#/rates" data-t="Стопе">Стопе</a>
+    <a href="#/backup" data-t="Копија">Копија</a>
+    <a href="#/about" data-t="О апликацији">О апликацији</a>
+    <button id="scriptBtn" class="btn sm" data-act="script" title="Ћирилица / латиница">Ћ → L</button>
+  </nav>
+</header>
+<div id="updateBar" class="update no-print" hidden>
+  <span data-t="Доступна је нова верзија апликације.">Доступна је нова верзија апликације.</span>
+  <button class="btn sm primary" data-act="sw-update" data-t="Освјежи">Освјежи</button>
+</div>
+<main id="main"><p class="muted" style="padding:24px">Учитавање…</p></main>
+<footer class="foot no-print"><span id="offlineChip" class="chip"></span></footer>
+<div id="toasts" class="no-print"></div>
+<noscript>Апликација захтијева JavaScript.</noscript>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "zatezna-kamata-cg",
+  "version": "1.0.0",
+  "description": "",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "python3 tests/reference.py && node --test tests/*.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "type": "module",
+  "private": true
+}
