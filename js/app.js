@@ -6,9 +6,9 @@ import { parseDMY, isoToDMY, todayIso, isoToDay } from './dates.js';
 import { store, getSetting, setSetting, uid, requestPersistence } from './storage.js';
 import { validateRatesFile, diffRates } from './rates.js';
 import { toPlain, fromPlain } from './serialize.js';
-import { t, setScript, getScript } from './i18n.js';
+import { t, setScript, getScript, toLatin } from './i18n.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 const DEFAULT_LEGAL_BASIS = 'Закон о облигационим односима („Сл. лист ЦГ“ бр. 47/08, 4/11, 22/17) — одредба о урачунавању трошкова, камата и главнице. Број члана није провјерен приликом израде апликације; унесите га прије употребе у налазу.';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -16,6 +16,9 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (q) => fmtMoney((q || ZERO).toFixed(2));
 const amtDisplay = (v) => (v ? String(v).replace('.', ',') : '');
+// Назив ставке у архиви: дужник (старији записи: тужени / број предмета)
+const nameOf = (info) => (info && (info.debtor || info.defendant || info.number)) || '';
+const nameOrEmpty = (info) => nameOf(info) || t('(без имена дужника)');
 
 const S = { cases: [], cur: null, official: null, officialId: null, result: null, tab: 'data', swReg: null };
 
@@ -28,6 +31,7 @@ async function init() {
   window.addEventListener('hashchange', route);
   document.body.addEventListener('change', onFieldChange);
   document.body.addEventListener('click', onClick);
+  document.body.addEventListener('keydown', onEnterNext);
   route();
   registerSW();
 }
@@ -43,6 +47,28 @@ async function loadOfficialRates() {
     await setSetting('activeRates', rec.id);
   }
   S.official = rec.data; S.officialId = rec.id;
+}
+
+// Enter прелази на сљедеће поље (као Tab). У напомени Enter остаје нови ред; Shift+Enter иде назад.
+function onEnterNext(e) {
+  if (e.key !== 'Enter' || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+  const el = e.target;
+  if (!el.matches || !el.matches('input, select') || el.type === 'file' || el.type === 'checkbox') return;
+  e.preventDefault();
+  const fields = $$('#main input:not([type=hidden]):not([type=file]):not([disabled]), #main select:not([disabled]), #main textarea:not([disabled])')
+    .filter(x => x.offsetParent !== null);
+  const i = fields.indexOf(el);
+  if (i < 0) return;
+  const bind = el.dataset.bind;
+  el.dispatchEvent(new Event('change', { bubbles: true })); // сачувај вриједност; приказ се може освјежити
+  setTimeout(() => {
+    const now = $$('#main input:not([type=hidden]):not([type=file]):not([disabled]), #main select:not([disabled]), #main textarea:not([disabled])').filter(x => x.offsetParent !== null);
+    let j = bind ? now.findIndex(x => x.dataset.bind === bind) : now.indexOf(el);
+    if (j < 0) j = i;
+    const next = now[j + (e.shiftKey ? -1 : 1)];
+    if (next) { S.focusBind = next.dataset.bind || null; next.focus(); if (next.select && next.tagName === 'INPUT') next.select(); }
+    else if (el.blur) el.blur();
+  }, 60);
 }
 
 // ───────────────────────── Рутирање
@@ -70,37 +96,59 @@ function applyStaticTexts() {
   document.documentElement.lang = getScript() === 'cyr' ? 'sr-Cyrl' : 'sr-Latn';
 }
 
-// ───────────────────────── Почетна: предмети
+// ───────────────────────── Почетна: архива обрачуна
 function renderHome() {
   applyStaticTexts();
   setTitle('');
-  const list = S.cases.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   setMain(`
   <section class="panel">
     <div class="row-between">
-      <h1>${t('Предмети')}</h1>
-      <button class="btn primary" data-act="new-case">＋ ${t('Нови предмет')}</button>
+      <h1>${t('Обрачуни')}</h1>
+      <button class="btn primary" data-act="new-case">＋ ${t('Нови обрачун')}</button>
     </div>
-    ${list.length ? `<ul class="case-list">${list.map(c => `
-      <li><a href="#/case/${c.id}">
-        <strong>${esc(c.info.number || t('(без броја)'))}</strong>
-        <span>${esc(c.info.court || '')}</span>
-        <span class="muted">${esc([c.info.plaintiff, c.info.defendant].filter(Boolean).join(' – '))}</span>
-        <span class="muted small">${t('Главница')}: ${c.principals.length} · ${t('уплата')}: ${c.payments.length} · ${t('измијењено')} ${new Date(c.updatedAt || c.createdAt).toLocaleDateString('sr-Latn-ME')}</span>
-      </a></li>`).join('')}</ul>`
-    : `<p class="empty">${t('Још нема предмета. Направите први предмет — подаци остају само на овом уређају.')}</p>`}
+    ${S.cases.length ? `<label class="fld search">${t('Тражи по имену дужника')}<input id="searchBox" type="search" value="${esc(S.search || '')}" placeholder="${t('нпр. Петровић')}" autocomplete="off"></label>` : ''}
+    <div id="caseList"></div>
   </section>
   <section class="panel info">
     <h2>${t('Табела законских стопа')}</h2>
     <p>${esc(t(S.official.назив || ''))}: <strong>${isoToDMY(S.official.покривено_од)} – ${isoToDMY(S.official.покривено_до)}</strong> · ${t('верзија')} ${esc(S.official.version)}</p>
     <p class="small muted">${t('Стопа се не продужава аутоматски послије посљедњег периода. За нова полугођа користите „Стопе → Провјери ажурирање“.')}</p>
   </section>`);
+  renderCaseList();
+  const sb = $('#searchBox');
+  if (sb) sb.addEventListener('input', () => { S.search = sb.value; renderCaseList(); });
+}
+function renderCaseList() {
+  const q = (S.search || '').trim();
+  const qn = latin(q);
+  const list = S.cases.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .filter(c => !qn || latin(nameOf(c.info) + ' ' + (c.info.note || '')).includes(qn));
+  const el = $('#caseList');
+  if (!el) return;
+  el.innerHTML = !S.cases.length
+    ? `<p class="empty">${t('Још нема обрачуна. Подаци остају само на овом уређају.')}</p>`
+    : !list.length ? `<p class="empty">${t('Нема дужника који одговара претрази.')}</p>`
+    : `<ul class="case-list">${list.map(c => `
+      <li><a href="#/case/${c.id}/${c.principals.length ? 'calc' : 'data'}">
+        <strong>${esc(nameOrEmpty(c.info))}</strong>
+        ${c.info.note ? `<span class="muted note">${esc(c.info.note)}</span>` : ''}
+        <span class="muted small">${t('обрачун на дан')} ${isoToDMY(c.calcDate)}, ${countText(c)}</span>
+      </a></li>`).join('')}</ul>`;
+}
+function countText(c) {
+  const n = c.principals.length, u = c.payments.length;
+  const g = n === 1 ? t('1 главница') : `${n} ${t(n >= 2 && n <= 4 ? 'главнице' : 'главница')}`;
+  return u ? `${g}, ${u} ${t(u === 1 ? 'уплата' : u <= 4 ? 'уплате' : 'уплата')}` : g;
+}
+// Претрага не зависи од писма ни великих слова: „Петровић“ = „petrovic“
+function latin(x) {
+  return toLatin(String(x || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'dj');
 }
 
 function newCase() {
   return {
     id: uid('c'), createdAt: Date.now(), updatedAt: Date.now(),
-    info: { number: '', court: '', plaintiff: '', defendant: '', expert: '', note: '' },
+    info: { debtor: '', note: '' },
     calcDate: todayIso(),
     settings: {
       dayRule: 'excludeFirst', paymentDayRule: 'interestBeforePayment', allocation: 'costsInterestPrincipal',
@@ -126,15 +174,19 @@ async function openCase(id, tab) {
   S.cur = c; c.invalid = c.invalid || {};
   S.tab = tab || S.tab || 'data';
   if (!['data', 'principals', 'payments', 'calc'].includes(S.tab)) S.tab = 'data';
-  setTitle(c.info.number || t('(без броја)'));
-  const tabs = [['data', 'Подаци и правила'], ['principals', '1. Главнице'], ['payments', '2. Уплате и трошкови'], ['calc', '3. Обрачун и извоз']];
+  setTitle(nameOrEmpty(c.info));
+  const tabs = [['data', 'Дужник'], ['principals', 'Главнице'], ['payments', 'Уплате и трошкови'], ['calc', 'Обрачун']];
   setMain(`
-    <nav class="tabs">${tabs.map(([k, l]) => `<a href="#/case/${c.id}/${k}" class="${S.tab === k ? 'on' : ''}">${t(l)}</a>`).join('')}</nav>
+    <nav class="tabs" aria-label="${t('Кораци обрачуна')}">${tabs.map(([k, l], i) => `<a href="#/case/${c.id}/${k}" class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="step"' : ''}><span class="n">${i + 1}</span><span class="l">${t(l)}</span></a>`).join('')}</nav>
     <div id="tabBody"></div>`);
   renderTab();
 }
 function renderTab() {
-  if (S.tab === 'data') return renderData();
+  if (S.tab === 'data') {
+    renderData();
+    if (S.focusDebtor) { S.focusDebtor = false; const i = $('[data-bind="info.debtor"]'); if (i) i.focus(); }
+    return;
+  }
   if (S.tab === 'principals') return renderPrincipals();
   if (S.tab === 'payments') return renderPayments();
   return renderCalc();
@@ -164,19 +216,17 @@ function renderData() {
   const c = S.cur, s = c.settings;
   $('#tabBody').innerHTML = `
   <section class="panel">
-    <h2>${t('Подаци о предмету')}</h2>
+    <h2>${t('Дужник')}</h2>
     <div class="grid2">
-      ${fld('Број предмета', 'info.number', c.info.number)}
-      ${fld('Суд', 'info.court', c.info.court)}
-      ${fld('Тужилац', 'info.plaintiff', c.info.plaintiff)}
-      ${fld('Тужени', 'info.defendant', c.info.defendant)}
-      ${fld('Вјештак (за извјештај)', 'info.expert', c.info.expert)}
+      ${fld('Име дужника (за претрагу у архиви)', 'info.debtor', nameOf(c.info))}
       ${fld('Датум обрачуна', 'calcDate', c.calcDate, 'date')}
-      ${area('Напомена', 'info.note', c.info.note)}
+      ${area('Напомена (по жељи)', 'info.note', c.info.note)}
     </div>
+    <p class="next"><a class="btn primary" href="#/case/${c.id}/principals">${t('Даље: главнице')}</a></p>
   </section>
-  <section class="panel">
-    <h2>${t('Правила обрачуна')}</h2>
+  <details class="panel settings" ${S.settingsOpen || nonDefault(s) ? 'open' : ''}>
+    <summary><span><b>${t('Правила и стопе')}</b><small>${esc(settingsSummary(s))}</small></span></summary>
+    <h3>${t('Правила обрачуна')}</h3>
     <p class="small muted">${t('Сва правила се исписују у извјештају и Excel-у.')}</p>
     <div class="grid2">
       ${sel('Бројање дана', 'settings.dayRule', s.dayRule, Object.entries(RULES.dayRule))}
@@ -189,22 +239,27 @@ function renderData() {
       : area('Правни основ редосљеда трошкови → камата → главница (исписује се у извјештају)', 'settings.allocationBasisLegal', s.allocationBasisLegal)}
     ${s.allocation !== 'principalOnly' && /није провјерен/.test(s.allocationBasisLegal || '') ? `<p class="warn">${t('Правни основ још садржи напомену да број члана није провјерен. Допуните га прије употребе у налазу.')}</p>` : ''}
     <p class="small muted">${t('Третман дана уплате и правило за уплате без намјене су избор корисника — апликација их не представља као законом утврђене.')}</p>
-  </section>
-  <section class="panel">
-    <h2>${t('Стопе')}</h2>
+    <h3>${t('Стопе')}</h3>
     ${sel('Начин одређивања стопе', 'settings.rateMode', s.rateMode, [['official', 'Законске стопе ЦБЦГ'], ['single', 'Једна сопствена стопа за цијели обрачун'], ['custom', 'Више сопствених стопа по периодима']])}
     ${s.rateMode === 'official' ? `<p class="small">${t('Активна табела')}: ${esc(S.official.version)} (${isoToDMY(S.official.покривено_од)} – ${isoToDMY(S.official.покривено_до)}). <a href="#/rates">${t('Преглед и ажурирање стопа')}</a></p>` : ''}
     ${s.rateMode === 'single' ? `<div class="grid2">${fld('Годишња стопа (%)', 'settings.singleRate.стопа', s.singleRate.стопа, 'rate')}${fld('Основ / напомена', 'settings.singleRate.основ', s.singleRate.основ)}</div><p class="small muted">${t('Ручно унесена стопа означава се у извјештају као ручно унесена.')}</p>` : ''}
     ${s.rateMode === 'custom' ? customRatesEditor() : ''}
-  </section>
-  <section class="panel">
-    <h2>${t('Предмет')}</h2>
-    <div class="btns">
-      <button class="btn" data-act="export-case">${t('Извези овај предмет (JSON)')}</button>
-      <button class="btn" data-act="copy-case">${t('Копирај предмет')}</button>
-      <button class="btn danger" data-act="delete-case">${t('Обриши предмет')}</button>
-    </div>
-  </section>`;
+  </details>
+  <div class="btns case-actions">
+    <button class="btn sm" data-act="export-case">${t('Извези (JSON)')}</button>
+    <button class="btn sm" data-act="copy-case">${t('Копирај обрачун')}</button>
+    <button class="btn sm danger" data-act="delete-case">${t('Обриши обрачун')}</button>
+  </div>`;
+  const d = $('details.settings');
+  if (d) d.addEventListener('toggle', () => { S.settingsOpen = d.open; });
+}
+function nonDefault(s) {
+  return s.dayRule !== 'excludeFirst' || s.paymentDayRule !== 'interestBeforePayment' || s.allocation !== 'costsInterestPrincipal'
+    || s.unassignedRule !== 'none' || s.rateMode !== 'official';
+}
+function settingsSummary(s) {
+  const rate = { official: 'законске стопе ЦБЦГ', single: 'једна сопствена стопа', custom: 'сопствене стопе по периодима' }[s.rateMode];
+  return t(`${rate}; ${s.dayRule === 'excludeFirst' ? 'први дан се не рачуна' : 'рачунају се оба дана'}; ${s.allocation === 'costsInterestPrincipal' ? 'уплате: трошкови → камата → главница' : 'уплате само на главницу'}`);
 }
 function customRatesEditor() {
   const rs = S.cur.settings.customRates;
@@ -242,12 +297,12 @@ function renderPrincipals() {
         </div>
       </div>`).join('') || `<p class="empty">${t('Нема унесених главница.')}</p>`}
     </div>
-    ${c.principals.length ? `<p class="next"><a class="btn" href="#/case/${c.id}/payments">${t('Даље: уплате и трошкови')} →</a> <a class="btn primary" href="#/case/${c.id}/calc">${t('Обрачун')} →</a></p>` : ''}
+    ${c.principals.length ? `<p class="next"><a class="btn" href="#/case/${c.id}/payments">${t('Уплате и трошкови')}</a> <a class="btn primary" href="#/case/${c.id}/calc">${t('Израчунај')}</a></p>` : ''}
   </section>`;
 }
 
 function targetOptions(includeCase = true) {
-  return [...S.cur.principals.map((p, i) => [p.id, `${i + 1}. ${p.label || 'Главница'}`]), ...(includeCase ? [[CASE_COSTS, 'Трошкови предмета']] : [])];
+  return [...S.cur.principals.map((p, i) => [p.id, `${i + 1}. ${p.label || 'Главница'}`]), ...(includeCase ? [[CASE_COSTS, 'Остали трошкови']] : [])];
 }
 function renderPayments() {
   const c = S.cur;
@@ -268,7 +323,7 @@ function renderPayments() {
           ${fld('Опис', `payments.${p.id}.desc`, p.desc)}
         </div>
         <div class="grid2">
-          ${sel('Намјена', `payments.${p.id}.mode`, p.mode, [['unassigned', 'Без означене намјене (правило предмета)'], ['target', 'Једна обавеза'], ['split', 'Подијели на више обавеза']])}
+          ${sel('Намјена', `payments.${p.id}.mode`, p.mode, [['unassigned', 'Без означене намјене (правило обрачуна)'], ['target', 'Једна обавеза'], ['split', 'Подијели на више обавеза']])}
           ${p.mode === 'target' ? sel('Обавеза', `payments.${p.id}.target`, p.target, tgt) : ''}
         </div>
         ${p.mode === 'split' ? `<div class="splits">${(p.splits || []).map(s => `
@@ -276,7 +331,7 @@ function renderPayments() {
           <button class="btn sm danger self-end" data-act="del-split" data-pid="${p.id}" data-id="${s.id}">✕</button></div>`).join('')}
           <button class="btn sm" data-act="add-split" data-pid="${p.id}">＋ ${t('Дио уплате')}</button>
           ${splitCheck(p)}</div>` : ''}
-        ${p.mode === 'unassigned' && c.settings.unassignedRule === 'none' ? `<p class="warn small">${t('Намјена није одређена, а у правилима предмета није изабрано правило за уплате без намјене — обрачун ће бити блокиран.')}</p>` : ''}
+        ${p.mode === 'unassigned' && c.settings.unassignedRule === 'none' ? `<p class="warn small">${t('Намјена није одређена, а у правилима обрачуна није изабрано правило за уплате без намјене — обрачун ће бити блокиран.')}</p>` : ''}
       </div>`).join('') || `<p class="empty">${t('Нема уплата — обрачунава се камата на пуну главницу.')}</p>`}
     </div>
   </section>
@@ -293,7 +348,7 @@ function renderPayments() {
         </div></div>`).join('') || `<p class="empty">${t('Нема трошкова.')}</p>`}
     </div>
     <p class="small muted">${t('На трошкове се у овом обрачуну не обрачунава камата.')}</p>
-    <p class="next"><a class="btn primary" href="#/case/${c.id}/calc">${t('Обрачун')} →</a></p>
+    <p class="next"><a class="btn primary" href="#/case/${c.id}/calc">${t('Израчунај')}</a></p>
   </section>`;
 }
 function splitCheck(p) {
@@ -340,22 +395,19 @@ function renderCalc() {
   const c = S.cur;
   const r = runCalc();
   S.result = r;
-  $('#tabBody').innerHTML = `
-  <section class="panel">
-    <div class="row-between"><h2>${t('Обрачун на дан')} ${isoToDMY(c.calcDate)}</h2>
-    <button class="btn" data-act="recalc">↻ ${t('Поново израчунај')}</button></div>
-    ${r.ok ? '' : `<div class="errors"><h3>${t('Обрачун није могућ')}</h3><ul>${r.errors.map(e => `<li>${esc(t(e.msg))}</li>`).join('')}</ul></div>`}
-    ${(r.warnings || []).length ? `<div class="warnings"><ul>${r.warnings.map(w => `<li>${esc(t(w.msg))}</li>`).join('')}</ul></div>` : ''}
-    ${r.ok ? `<div class="btns">
-      <button class="btn primary" data-act="save-snapshot">💾 ${t('Сачувај завршени обрачун')}</button>
-      <span class="small muted">${t('Извоз у Excel и штампа раде се из сачуваног обрачуна, да се извјештај не би непримјетно промијенио.')}</span></div>` : ''}
-  </section>
-  ${r.ok ? reportHtml({ result: r, caseInfo: c.info, calcDate: c.calcDate, settings: r.settings, live: true }) : ''}
-  ${snapshotsListHtml()}`;
+  const actions = `<div class="btns save-bar no-print">
+      <button class="btn primary" data-act="save-snapshot">${t('Сачувај обрачун')}</button>
+      <span class="small muted">${t('Excel и штампа праве се из сачуваног обрачуна, па се извјештај касније не мијења.')}</span></div>`;
+  const warn = (r.warnings || []).length ? `<div class="warnings"><ul>${r.warnings.map(w => `<li>${esc(t(w.msg))}</li>`).join('')}</ul></div>` : '';
+  $('#tabBody').innerHTML = r.ok
+    ? `${warn}${reportHtml({ result: r, caseInfo: c.info, calcDate: c.calcDate, settings: r.settings, live: true }, actions)}`
+    : `<section class="panel"><div class="errors"><h3>${t('Обрачун није могућ')}</h3><ul>${r.errors.map(e => `<li>${esc(t(e.msg))}</li>`).join('')}</ul></div>${warn}</section>`;
+  $('#tabBody').insertAdjacentHTML('beforeend', `
+  ${snapshotsListHtml()}`);
   loadSnapshotsList();
 }
 
-function reportHtml(snap) {
+function reportHtml(snap, actions = '') {
   const r = snap.result, st = snap.settings, ci = snap.caseInfo || {};
   const obs = r.obligations.filter(o => o.kind === 'principal' || r.rows.some(x => x.oid === o.id));
   const label = (oid) => (r.obligations.find(o => o.id === oid) || {}).label || '';
@@ -363,23 +415,30 @@ function reportHtml(snap) {
   return `
   <section class="panel report" id="report">
     ${statusBadge}
+    ${snap.live ? `<h2 class="no-print">${t('Обрачун на дан')} ${isoToDMY(snap.calcDate)}</h2>` : ''}
     <div class="print-only">
       <h1>${t('Обрачун законске затезне камате')}</h1>
-      <p>${t('Предмет')}: <b>${esc(ci.number || '')}</b> · ${t('Суд')}: ${esc(ci.court || '')}<br>${t('Тужилац')}: ${esc(ci.plaintiff || '')} · ${t('Тужени')}: ${esc(ci.defendant || '')}<br>${t('Датум обрачуна')}: ${isoToDMY(snap.calcDate)}${ci.expert ? ' · ' + t('Вјештак') + ': ' + esc(ci.expert) : ''}</p>
+      <p>${t('Дужник')}: <b>${esc(nameOf(ci))}</b><br>${t('Датум обрачуна')}: ${isoToDMY(snap.calcDate)}${ci.note ? '<br>' + t('Напомена') + ': ' + esc(ci.note) : ''}</p>
     </div>
-    <h2 class="no-print">${t('Резултат')}</h2>
-    <div class="cards">
-      ${card('Почетна главница', r.totals.initialPrincipal)}
-      ${card('Обрачуната камата', r.totals.interestAccrued, true)}
-      ${card('Трошкови', r.totals.costsTotal)}
-      ${card('Уплате', r.totals.paymentsTotal)}
-      ${card('Преостала главница', r.totals.remainingPrincipal)}
-      ${card('Преостала неплаћена камата', r.totals.remainingInterest)}
-      ${card('Преостали трошкови', r.totals.remainingCosts)}
-      ${card('ПРЕОСТАЛИ ДУГ', r.totals.remainingDebt, true)}
-      ${r.totals.overpay.sign() ? card('Преплата (не преноси се)', r.totals.overpay) : ''}
+    <div class="cards summary">
+      <div class="total">
+        <span>${t('Преостали дуг на дан')} ${isoToDMY(snap.calcDate)}</span>
+        <b>${money(r.totals.remainingDebt)} €</b>
+        <small>${t('главница, неплаћена камата и трошкови')}</small>
+      </div>
+      <dl class="lines">
+        ${card('Почетна главница', r.totals.initialPrincipal)}
+        ${card('Обрачуната камата', r.totals.interestAccrued, true)}
+        ${r.totals.costsTotal.sign() ? card('Трошкови', r.totals.costsTotal) : ''}
+        ${r.totals.paymentsTotal.sign() ? card('Уплате', r.totals.paymentsTotal) : ''}
+        ${card('Преостала главница', r.totals.remainingPrincipal)}
+        ${card('Преостала неплаћена камата', r.totals.remainingInterest)}
+        ${r.totals.costsTotal.sign() ? card('Преостали трошкови', r.totals.remainingCosts) : ''}
+        ${r.totals.overpay.sign() ? card('Преплата (не преноси се)', r.totals.overpay) : ''}
+      </dl>
     </div>
-    <p class="small">${t('Уплате урачунате на')}: ${t('трошкове')} ${money(r.totals.paidCosts)} € · ${t('камату')} ${money(r.totals.paidInterest)} € · ${t('главницу')} ${money(r.totals.paidPrincipal)} €</p>
+    ${r.totals.paymentsTotal.sign() ? `<p class="small muted paid">${t('Уплате урачунате на')}: ${t('трошкове')} ${money(r.totals.paidCosts)} € · ${t('камату')} ${money(r.totals.paidInterest)} € · ${t('главницу')} ${money(r.totals.paidPrincipal)} €</p>` : ''}
+    ${actions}
     <h3>${t('Обавезе')}</h3>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>${t('Обавеза')}</th><th>${t('Износ')}</th><th>${t('Почетни датум')}</th><th>${t('Први обрачунати дан')}</th><th>${t('Посљедњи дан')}</th><th>${t('Доспијеће')}</th><th>${t('Камата')}</th></tr></thead>
@@ -415,7 +474,7 @@ function reportHtml(snap) {
     ${r.warnings && r.warnings.length ? `<h3>${t('Упозорења')}</h3><ul>${r.warnings.map(w => `<li>${esc(t(w.msg))}</li>`).join('')}</ul>` : ''}
   </section>`;
 }
-function card(label, q, strong) { return `<div class="card ${strong ? 'strong' : ''}"><span>${t(label)}</span><b>${money(q)} €</b></div>`; }
+function card(label, q, strong) { return `<div class="line ${strong ? 'strong' : ''}"><dt>${t(label)}</dt><dd>${money(q)} €</dd></div>`; }
 
 function snapshotsListHtml() { return `<section class="panel"><h2>${t('Сачувани обрачуни')}</h2><div id="snapList" class="muted small">…</div></section>`; }
 async function loadSnapshotsList() {
@@ -453,12 +512,12 @@ async function renderSnapshot(id) {
   if (!s) { location.hash = '#/'; return; }
   const snap = { ...s, result: fromPlain(s.result) };
   S.snap = snap;
-  setTitle((s.caseInfo.number || '') + ' · v' + s.version);
+  setTitle(nameOf(s.caseInfo) + ' · v' + s.version);
   setMain(`
   <section class="panel no-print">
     <div class="row-between"><h2>${t('Сачуван обрачун')} — ${t('верзија')} ${s.version}</h2>
-      <a class="btn" href="#/case/${s.caseId}/calc">← ${t('Назад на предмет')}</a></div>
-    <p class="small muted">${t('Сачуван обрачун се не мијења ажурирањем стопа или апликације. За измјену направите нови обрачун у предмету — претходне верзије остају.')}</p>
+      <a class="btn" href="#/case/${s.caseId}/calc">← ${t('Назад на обрачун')}</a></div>
+    <p class="small muted">${t('Сачуван обрачун се не мијења ажурирањем стопа или апликације. За измјену промијените податке и сачувајте нову верзију — претходне остају.')}</p>
     <div class="btns">
       <button class="btn primary" data-act="xlsx">⬇ ${t('Excel (.xlsx)')}</button>
       <button class="btn" data-act="print">🖨 ${t('Штампа / PDF')}</button>
@@ -475,7 +534,7 @@ async function exportXlsx() {
     const { buildWorkbook } = await import('./xlsx-export.js');
     const wb = await buildWorkbook(window.ExcelJS, snap, getScript());
     const buf = await wb.xlsx.writeBuffer();
-    const name = `Kamata_${(snap.caseInfo.number || 'predmet').replace(/[^\p{L}\p{N}]+/gu, '_')}_v${snap.version}.xlsx`;
+    const name = `Kamata_${(toLatin(nameOf(snap.caseInfo)) || 'obracun').replace(/[^\p{L}\p{N}]+/gu, '_')}_v${snap.version}.xlsx`;
     download(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
   } catch (e) { console.error(e); toast(t('Извоз није успио') + ': ' + e.message, 'err'); }
 }
@@ -520,8 +579,14 @@ async function onFieldChange(e) {
   if (bind === 'calcDate' && val === '' && !bad) { S.cur.invalid[bind] = { raw, msg: t('Датум обрачуна је обавезан') }; }
   await saveCase();
   // освјежи приказ само кад се мијења структура (избори) или грешка
-  const needs = kind === 'select' || bad || el.closest('.fld.bad') || bind.endsWith('.label') || bind === 'info.number';
-  if (needs) { const y = window.scrollY; renderTab(); if (bind === 'info.number') setTitle(S.cur.info.number); window.scrollTo(0, y); }
+  if (bind === 'info.debtor') setTitle(nameOrEmpty(S.cur.info));
+  const needs = kind === 'select' || bad || el.closest('.fld.bad') || bind.endsWith('.label');
+  if (needs) {
+    const y = window.scrollY; const keep = S.focusBind || (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.bind);
+    renderTab(); window.scrollTo(0, y);
+    const f = keep && $(`[data-bind="${CSS.escape(keep)}"]`); if (f) f.focus();
+  }
+  S.focusBind = null;
 }
 
 async function onClick(e) {
@@ -531,7 +596,7 @@ async function onClick(e) {
   const c = S.cur;
   const rerender = async () => { await saveCase(); const y = window.scrollY; renderTab(); window.scrollTo(0, y); };
   switch (act) {
-    case 'new-case': { const n = newCase(); S.cur = n; await saveCase(); S.tab = 'data'; location.hash = '#/case/' + n.id + '/data'; break; }
+    case 'new-case': { const n = newCase(); S.cur = n; await saveCase(); S.tab = 'data'; S.focusDebtor = true; location.hash = '#/case/' + n.id + '/data'; break; }
     case 'add-principal': c.principals.push({ id: uid('p'), label: '', amount: '', start: '', due: '' }); await rerender(); focusLast(); break;
     case 'add-payment': c.payments.push({ id: uid('u'), date: '', amount: '', desc: '', seq: '', mode: c.principals.length === 1 ? 'target' : 'unassigned', target: c.principals[0]?.id || '', splits: [] }); await rerender(); focusLast(); break;
     case 'add-cost': c.costs.push({ id: uid('t'), date: '', amount: '', desc: '', target: CASE_COSTS }); await rerender(); break;
@@ -562,16 +627,14 @@ async function onClick(e) {
     case 'del-snap': if (confirm(t('Трајно обрисати ову сачувану верзију обрачуна?'))) { const s = await store.get('snapshots', b.dataset.id); await store.del('snapshots', b.dataset.id); location.hash = '#/case/' + s.caseId + '/calc'; } break;
     case 'export-case': await exportData({ caseIds: [c.id] }); break;
     case 'copy-case': {
-      const n = JSON.parse(JSON.stringify(c)); n.id = uid('c'); n.createdAt = n.updatedAt = Date.now(); n.info.number = (n.info.number || '') + ' ' + t('(копија)');
-      S.cur = n; await saveCase(); location.hash = '#/case/' + n.id + '/data'; toast(t('Предмет је копиран (без сачуваних обрачуна).')); break;
+      const n = JSON.parse(JSON.stringify(c)); n.id = uid('c'); n.createdAt = n.updatedAt = Date.now(); n.info.debtor = nameOf(n.info) + ' ' + t('(копија)');
+      S.cur = n; await saveCase(); location.hash = '#/case/' + n.id + '/data'; toast(t('Обрачун је копиран (без сачуваних верзија).')); break;
     }
     case 'delete-case': {
-      if (!confirm(t('Трајно обрисати предмет') + ` „${c.info.number || ''}“ ` + t('и све његове сачуване обрачуне?'))) return;
-      const typed = prompt(t('За потврду упишите ријеч: ОБРИШИ'));
-      if (!typed || !['ОБРИШИ', 'OBRIŠI', 'OBRISI'].includes(typed.trim().toUpperCase())) { toast(t('Брисање је отказано.')); return; }
-      await autoBackup('прије брисања предмета');
+      if (!confirm(t('Трајно обрисати обрачун за') + ` „${nameOrEmpty(c.info)}“ ` + t('и све његове сачуване верзије?'))) return;
+      await autoBackup('прије брисања обрачуна');
       for (const s of await store.byIndex('snapshots', 'caseId', c.id)) await store.del('snapshots', s.id);
-      await store.del('cases', c.id); S.cases = S.cases.filter(x => x.id !== c.id); S.cur = null; location.hash = '#/'; toast(t('Предмет је обрисан.')); break;
+      await store.del('cases', c.id); S.cases = S.cases.filter(x => x.id !== c.id); S.cur = null; location.hash = '#/'; toast(t('Обрачун је обрисан.')); break;
     }
     case 'script': setScript(getScript() === 'cyr' ? 'lat' : 'cyr'); await setSetting('script', getScript()); route(); break;
     case 'check-rates': await checkRatesUpdate(); break;
@@ -685,12 +748,12 @@ async function exportData({ caseIds }) {
   const snaps = (await store.all('snapshots')).filter(s => !caseIds || caseIds.includes(s.caseId));
   const out = {
     format: 'zatezna-kamata-cg', schema_version: 1, appVersion: APP_VERSION, exportedAt: new Date().toISOString(),
-    scope: caseIds ? 'предмет' : 'све',
+    scope: caseIds ? 'обрачун' : 'све',
     cases, snapshots: snaps,
     rates: caseIds ? [] : await store.all('rates'),
     settings: caseIds ? [] : (await store.all('settings')),
   };
-  const name = caseIds ? `predmet_${(cases[0]?.info.number || 'bez_broja').replace(/[^\p{L}\p{N}]+/gu, '_')}.json` : `zatezna_kamata_rezervna_kopija_${todayIso()}.json`;
+  const name = caseIds ? `obracun_${(toLatin(nameOf(cases[0]?.info)) || 'bez_imena').replace(/[^\p{L}\p{N}]+/gu, '_')}.json` : `zatezna_kamata_rezervna_kopija_${todayIso()}.json`;
   download(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), name);
 }
 async function autoBackup(reason) {
@@ -713,8 +776,8 @@ async function renderBackup() {
   </section>
   <section class="panel">
     <h2>${t('Аутоматске локалне копије')}</h2>
-    <p class="small muted">${t('Праве се прије замјене података при увозу и прије брисања предмета (чува се 10 посљедњих).')}</p>
-    <ul class="plain">${backups.map(b => `<li>${new Date(b.createdAt).toLocaleString('sr-Latn-ME')} — ${esc(t(b.reason))} (${b.data.cases.length} ${t('предмета')}) <button class="btn sm" data-act="restore-backup" data-id="${b.id}">${t('Врати')}</button></li>`).join('') || `<li class="muted">${t('Нема.')}</li>`}</ul>
+    <p class="small muted">${t('Праве се прије замјене података при увозу и прије брисања обрачуна (чува се 10 посљедњих).')}</p>
+    <ul class="plain">${backups.map(b => `<li>${new Date(b.createdAt).toLocaleString('sr-Latn-ME')} — ${esc(t(b.reason))} (${b.data.cases.length} ${t('обрачуна')}) <button class="btn sm" data-act="restore-backup" data-id="${b.id}">${t('Врати')}</button></li>`).join('') || `<li class="muted">${t('Нема.')}</li>`}</ul>
   </section>`);
   $('#importFile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -722,15 +785,15 @@ async function renderBackup() {
     try { j = JSON.parse(await f.text()); } catch { toast(t('Фајл није исправан JSON'), 'err'); return; }
     if (j.format !== 'zatezna-kamata-cg' || j.schema_version !== 1 || !Array.isArray(j.cases)) { $('#importBox').innerHTML = `<p class="errors">${t('Фајл није резервна копија ове апликације или је непозната верзија.')}</p>`; return; }
     const bad = j.cases.filter(c => !c.id || !c.info || !Array.isArray(c.principals) || !Array.isArray(c.payments) || !Array.isArray(c.costs) || !c.settings);
-    if (bad.length) { $('#importBox').innerHTML = `<p class="errors">${t('Неисправна структура у')} ${bad.length} ${t('предмета — увоз је одбијен.')}</p>`; return; }
+    if (bad.length) { $('#importBox').innerHTML = `<p class="errors">${t('Неисправна структура у')} ${bad.length} ${t('обрачуна — увоз је одбијен.')}</p>`; return; }
     const existing = await store.all('cases');
     const dupId = j.cases.filter(c => existing.some(x => x.id === c.id));
-    const dupNum = j.cases.filter(c => !dupId.includes(c) && c.info.number && existing.some(x => x.info.number === c.info.number));
+    const dupNum = j.cases.filter(c => !dupId.includes(c) && nameOf(c.info) && existing.some(x => latin(nameOf(x.info)) === latin(nameOf(c.info))));
     S.pendingImport = j;
     $('#importBox').innerHTML = `<div class="diff">
-      <p>${t('Фајл')}: <b>${esc(f.name)}</b> · ${j.cases.length} ${t('предмета')}, ${(j.snapshots || []).length} ${t('сачуваних обрачуна')}, ${t('апликација')} ${esc(j.appVersion || '')}</p>
-      ${dupId.length ? `<p class="warn">${t('Исти предмети већ постоје (исти ID)')}: ${dupId.map(c => esc(c.info.number || c.id)).join(', ')}</p>` : ''}
-      ${dupNum.length ? `<p class="warn">${t('Постоје предмети са истим бројем, али другим ID (увешће се као посебни)')}: ${dupNum.map(c => esc(c.info.number)).join(', ')}</p>` : ''}
+      <p>${t('Фајл')}: <b>${esc(f.name)}</b> · ${j.cases.length} ${t('обрачуна')}, ${(j.snapshots || []).length} ${t('сачуваних верзија')}, ${t('апликација')} ${esc(j.appVersion || '')}</p>
+      ${dupId.length ? `<p class="warn">${t('Исти обрачуни већ постоје (исти ID)')}: ${dupId.map(c => esc(nameOf(c.info) || c.id)).join(', ')}</p>` : ''}
+      ${dupNum.length ? `<p class="warn">${t('Постоје обрачуни за истог дужника, али са другим ID (увешће се као посебни)')}: ${dupNum.map(c => esc(nameOf(c.info))).join(', ')}</p>` : ''}
       <div class="btns">
         <button class="btn primary" data-act="import-apply" data-mode="merge">${t('Додај само нове (постојеће не дирај)')}</button>
         ${dupId.length ? `<button class="btn danger" data-act="import-apply" data-mode="replace">${t('Замијени постојеће истим ID')}</button>` : ''}
@@ -740,7 +803,7 @@ async function renderBackup() {
 }
 async function importApply(mode) {
   const j = S.pendingImport; if (!j) return;
-  if (mode === 'replace' && !confirm(t('Замијенити постојеће предмете подацима из фајла?'))) return;
+  if (mode === 'replace' && !confirm(t('Замијенити постојеће обрачуне подацима из фајла?'))) return;
   await autoBackup(mode === 'replace' ? 'прије замјене при увозу' : 'прије увоза');
   const existing = new Set((await store.all('cases')).map(c => c.id));
   let added = 0, replaced = 0, skipped = 0;

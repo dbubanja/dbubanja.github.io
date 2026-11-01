@@ -15,6 +15,7 @@ function xDate(iso) {
   const { y, m, d } = fromDay(z);
   return new Date(Date.UTC(y, m - 1, d));
 }
+const nameOf = (info) => (info && (info.debtor || info.defendant || info.number)) || '';
 const num = (q) => (q && typeof q.toNumber === 'function' ? q.toNumber() : 0);
 
 // snap = { caseInfo, settings, result (Q-ови), ratesMeta, appVersion, createdAt, version }
@@ -23,7 +24,7 @@ export async function buildWorkbook(ExcelJS, snap, script = 'cyr') {
   const r = snap.result;
   const ci = snap.caseInfo || {};
   const wb = new ExcelJS.Workbook();
-  wb.creator = ci.expert || 'Затезна камата ЦГ';
+  wb.creator = 'Затезна камата ЦГ';
   wb.created = new Date();
 
   const thin = { style: 'thin', color: { argb: 'FF8A9BA8' } };
@@ -48,10 +49,8 @@ export async function buildWorkbook(ExcelJS, snap, script = 'cyr') {
   title.value = T('ОБРАЧУН ЗАКОНСКЕ ЗАТЕЗНЕ КАМАТЕ') + (snap.result.working ? T(' — РАДНИ ОБРАЧУН (садржи непотврђене стопе)') : '');
   title.font = { bold: true, size: 14 };
   row++;
-  const info = [
-    [T('Предмет'), ci.number || ''], [T('Суд'), ci.court || ''], [T('Тужилац'), ci.plaintiff || ''], [T('Тужени'), ci.defendant || ''],
-    [T('Датум обрачуна'), isoToDMY(snap.calcDate)], [T('Вјештак'), ci.expert || ''],
-  ];
+  const info = [[T('Дужник'), nameOf(ci)], [T('Датум обрачуна'), isoToDMY(snap.calcDate)]];
+  if (ci.note) info.push([T('Напомена'), ci.note]);
   for (const [k, v] of info) {
     ws.getCell(row, 1).value = k; ws.getCell(row, 1).font = { bold: true };
     ws.mergeCells(row, 1, row, 2);
@@ -248,15 +247,11 @@ export async function buildWorkbook(ExcelJS, snap, script = 'cyr') {
   wr.getCell(rr2 + 1, 1).value = T('Ознака „потврђено“ значи да је стопа провјерена према наведеном извору; не представља потврду исправности цијелог обрачуна.');
 
   // ───────── Лист „Подаци о предмету“
-  const wi = wb.addWorksheet(T('Подаци о предмету'), { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  const wi = wb.addWorksheet(T('Подаци о обрачуну'), { pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   wi.columns = [{ width: 34 }, { width: 90 }];
   const prow = (k, v) => { const x = wi.addRow([T(k), v]); x.getCell(1).font = { bold: true }; x.getCell(2).alignment = { wrapText: true }; };
-  wi.addRow([T('Подаци о предмету и обрачуну')]).getCell(1).font = { bold: true, size: 13 };
-  prow('Број предмета', ci.number || '');
-  prow('Суд', ci.court || '');
-  prow('Тужилац', ci.plaintiff || '');
-  prow('Тужени', ci.defendant || '');
-  prow('Вјештак', ci.expert || '');
+  wi.addRow([T('Подаци о обрачуну')]).getCell(1).font = { bold: true, size: 13 };
+  prow('Дужник', nameOf(ci));
   prow('Напомена', ci.note || '');
   prow('Датум обрачуна', isoToDMY(snap.calcDate));
   prow('Статус обрачуна', T(r.working ? 'РАДНИ ОБРАЧУН — коришћене су непотврђене стопе' : (r.manual ? 'Садржи ручно унесене стопе (видјети лист „Стопе“)' : 'Коришћене су стопе означене као потврђене')));

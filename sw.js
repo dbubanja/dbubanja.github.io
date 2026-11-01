@@ -1,11 +1,26 @@
 // Service worker: офлајн рад. Нова верзија се активира тек кад корисник кликне „Освјежи“.
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const CACHE = 'zk-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'rates.json', 'Pregled_stopa_CBCG.html',
   'js/app.js', 'js/engine.js', 'js/rational.js', 'js/dates.js', 'js/parse.js', 'js/storage.js', 'js/rates.js',
   'js/serialize.js', 'js/i18n.js', 'js/xlsx-export.js', 'lib/exceljs.min.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'css/fonts.css',
+  'fonts/golos-text-cyrillic-400-normal.woff2',
+  'fonts/golos-text-cyrillic-500-normal.woff2',
+  'fonts/golos-text-cyrillic-600-normal.woff2',
+  'fonts/golos-text-latin-400-normal.woff2',
+  'fonts/golos-text-latin-500-normal.woff2',
+  'fonts/golos-text-latin-600-normal.woff2',
+  'fonts/golos-text-latin-ext-400-normal.woff2',
+  'fonts/golos-text-latin-ext-500-normal.woff2',
+  'fonts/golos-text-latin-ext-600-normal.woff2',
+  'fonts/literata-cyrillic-500-normal.woff2',
+  'fonts/literata-cyrillic-600-normal.woff2',
+  'fonts/literata-latin-500-normal.woff2',
+  'fonts/literata-latin-600-normal.woff2',
+  'fonts/literata-latin-ext-500-normal.woff2',
+  'fonts/literata-latin-ext-600-normal.woff2',
 ];
 
 self.addEventListener('install', (e) => {
