@@ -1,0 +1,39 @@
+{
+  "id": "./",
+  "name": "Камата / Студио · Црна Гора",
+  "short_name": "Камата Студио",
+  "description": "Обрачун законске затезне камате по прописима Црне Горе. Ради офлајн; подаци остају на уређају.",
+  "lang": "sr",
+  "dir": "ltr",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f5f1",
+  "theme_color": "#163f3c",
+  "categories": [
+    "finance",
+    "productivity",
+    "business"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

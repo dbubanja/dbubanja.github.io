@@ -1,0 +1,323 @@
+{
+ "01 прелаз године и промјена стопе 2011": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "1085548/13359",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "1000",
+   "remainingInterest": "1085548/13359",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "02 пријеступна година и 29. фебруар, оба дана": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "40/61",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "1000",
+   "remainingInterest": "40/61",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "03 исти датум — први дан се не рачуна": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "0",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "500",
+   "remainingInterest": "0",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "04 исти датум — оба дана": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "20/183",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "500",
+   "remainingInterest": "20/183",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "05 прелаз 2022/2023 и промјена стопе": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "5453082439/7300000",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "1234567/100",
+   "remainingInterest": "5453082439/7300000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "06 уплата покрива дио камате": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "31529530/13359",
+   "paidCosts": "0",
+   "paidInterest": "500",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "10000",
+   "remainingInterest": "24850030/13359",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "07 уплата гаси главницу и ствара преплату": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "9500/183",
+   "paidCosts": "0",
+   "paidInterest": "9500/183",
+   "paidPrincipal": "1000",
+   "remainingPrincipal": "0",
+   "remainingInterest": "0",
+   "remainingCosts": "0",
+   "overpay": "27100/183"
+  }
+ },
+ "08 више главница и расподјела уплате": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "14067505625669977/15603312000000",
+   "paidCosts": "0",
+   "paidInterest": "48574836427/106872000",
+   "paidPrincipal": "111733163573/106872000",
+   "remainingPrincipal": "476116272427/106872000",
+   "remainingInterest": "6975579507327977/15603312000000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "09 без намјене — најстарија прво, са трошковима": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "86116060693/106872000",
+   "paidCosts": "230",
+   "paidInterest": "370",
+   "paidPrincipal": "2000",
+   "remainingPrincipal": "7001/2",
+   "remainingInterest": "46573420693/106872000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "10 без намјене — сразмјерно": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "13632578450638537/15603312000000",
+   "paidCosts": "0",
+   "paidInterest": "48574836427/106872000",
+   "paidPrincipal": "141418999013/106872000",
+   "remainingPrincipal": "446430436987/106872000",
+   "remainingInterest": "6540652332296537/15603312000000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "11 више догађаја истог дана (трошак + двије уплате)": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "39022942633/975207000",
+   "paidCosts": "40",
+   "paidInterest": "1872389/66795",
+   "paidPrincipal": "18500086/66795",
+   "remainingPrincipal": "34935914/66795",
+   "remainingInterest": "3895354411/325069000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "12 уплата умањује основицу прије камате за тај дан": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "24486871643/12223485",
+   "paidCosts": "0",
+   "paidInterest": "18374930/13359",
+   "paidPrincipal": "48420070/13359",
+   "remainingPrincipal": "85169930/13359",
+   "remainingInterest": "7673810693/12223485",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "13 камата за дан уплате прије умањења": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "43566399057/21730640",
+   "paidCosts": "0",
+   "paidInterest": "6140185/4453",
+   "paidPrincipal": "16124815/4453",
+   "remainingPrincipal": "28405185/4453",
+   "remainingInterest": "13602296257/21730640",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "14 ручна стопа 6% прије 2010.": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "9234/73",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "750",
+   "remainingInterest": "9234/73",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "15 нулта стопа": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "0",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "750",
+   "remainingInterest": "0",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "16 више ручних периода": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "3448/73",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "1000",
+   "remainingInterest": "3448/73",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "17 празнина у стопама — блокирано": {
+  "ok": false,
+  "reason": "missing",
+  "firstMissing": "2010-01-01",
+  "lastMissing": "2010-01-31",
+  "missingDays": 31
+ },
+ "18 преклапање стопа — блокирано": {
+  "ok": false,
+  "reason": "overlap"
+ },
+ "19 законске стопе — период прије 2010. блокиран": {
+  "ok": false,
+  "reason": "missing",
+  "firstMissing": "2009-11-16",
+  "lastMissing": "2009-12-31",
+  "missingDays": 46
+ },
+ "20 само на главницу": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "123496325/53436",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "500",
+   "remainingPrincipal": "9500",
+   "remainingInterest": "123496325/53436",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "21 незаокружени збирови — више ситних износа": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "3875005909/4453000000",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "121/100",
+   "remainingInterest": "3875005909/4453000000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "22 датум обрачуна прије почетног": {
+  "ok": false,
+  "reason": "reversed"
+ },
+ "23 дуг период 2010–2026 са три уплате": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "89787001826121948259/3256947578250000",
+   "paidCosts": "30864/25",
+   "paidInterest": "105798265399031/4876035000",
+   "paidPrincipal": "49091083071019/4876035000",
+   "remainingPrincipal": "72809791928981/4876035000",
+   "remainingInterest": "19119050452839191809/3256947578250000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "24 комбиноване стопе прије и послије 2010": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "8306493752402003697/44530000",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "24691357802469/20",
+   "remainingInterest": "8306493752402003697/44530000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "25 ручна замјена усред ЦБЦГ периода": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "22359425719/1830000000",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "0",
+   "remainingPrincipal": "10001/100",
+   "remainingInterest": "22359425719/1830000000",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ },
+ "26 само главница са заједничким трошковима": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "104719/732",
+   "paidCosts": "0",
+   "paidInterest": "0",
+   "paidPrincipal": "600",
+   "remainingPrincipal": "900",
+   "remainingInterest": "104719/732",
+   "remainingCosts": "100",
+   "overpay": "0"
+  }
+ },
+ "27 ред доспијећа различит од почетка камате": {
+  "ok": true,
+  "totals": {
+   "interestAccrued": "11590561/78080",
+   "paidCosts": "0",
+   "paidInterest": "128735/1464",
+   "paidPrincipal": "749665/1464",
+   "remainingPrincipal": "1446335/1464",
+   "remainingInterest": "14174083/234240",
+   "remainingCosts": "0",
+   "overpay": "0"
+  }
+ }
+}

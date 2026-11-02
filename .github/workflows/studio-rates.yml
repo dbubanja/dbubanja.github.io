@@ -1,0 +1,32 @@
+name: CBCG Studio rate proposals
+on:
+  schedule:
+    - cron: '30 7 1-20 1,7 *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: studio-cbcg-proposals
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils tesseract-ocr
+      - run: python3 studio/tools/check_cbcg.py
+      - name: Open a reviewable proposal
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- studio/rates.json; then exit 0; fi
+          BRANCH="studio/cbcg-$(date -u +%Y-%m-%d)"
+          if gh pr list --head "$BRANCH" --state open --json number --jq 'length' | grep -q '^1$'; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$BRANCH"
+          git add studio/rates.json studio/izvori
+          git commit -m 'Prepare unconfirmed CBCG rate proposal'
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" --title 'ЦБЦГ: приједлог нове стопе за ручну провјеру' --body-file studio/tools/out/izvjestaj.md
