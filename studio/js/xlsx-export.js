@@ -89,7 +89,7 @@ export async function buildWorkbook(ExcelJS, snap, script = 'cyr') {
     if (o.kind === 'principal') {
       ws.getCell(row, 4).value = xDate(o.start);
       ws.getCell(row, 17).value = num(o.initial);
-      ws.getCell(row, 20).value = T(`Почетни датум ${isoToDMY(o.start)}; први обрачунати дан ${isoToDMY(o.firstDay)}; посљедњи ${isoToDMY(o.lastDay)}`) + (o.due ? T('; доспијеће (информативно) ') + isoToDMY(o.due) : '');
+      ws.getCell(row, 20).value = T(`Почетни датум ${isoToDMY(o.start)}; први обрачунати дан ${isoToDMY(o.firstDay)}; посљедњи ${isoToDMY(o.lastDay)}`) + (o.due ? T('; доспијеће (за распоред уплата) ') + isoToDMY(o.due) : '');
     } else {
       ws.getCell(row, 17).value = 0;
     }
@@ -269,7 +269,7 @@ export async function buildWorkbook(ExcelJS, snap, script = 'cyr') {
   prow('Формула', T(RULES.formula));
   prow('Обавезе', '');
   for (const o of r.obligations.filter(z => z.kind === 'principal')) {
-    prow('  ' + o.label, `${T('износ')} ${num(o.initial).toFixed(2).replace('.', ',')} €; ${T('почетни датум')} ${isoToDMY(o.start)}; ${T('први обрачунати дан')} ${isoToDMY(o.firstDay)}; ${T('посљедњи')} ${isoToDMY(o.lastDay)}${o.due ? '; ' + T('доспијеће (информативно)') + ' ' + isoToDMY(o.due) : ''}${o.noInterestDays ? ' — ' + T('нема дана за обрачун') : ''}`);
+    prow('  ' + o.label, `${T('износ')} ${num(o.initial).toFixed(2).replace('.', ',')} €; ${T('почетни датум')} ${isoToDMY(o.start)}; ${T('први обрачунати дан')} ${isoToDMY(o.firstDay)}; ${T('посљедњи')} ${isoToDMY(o.lastDay)}${o.due ? '; ' + T('доспијеће (за распоред уплата)') + ' ' + isoToDMY(o.due) : ''}${o.noInterestDays ? ' — ' + T('нема дана за обрачун') : ''}`);
   }
   if (r.warnings && r.warnings.length) {
     prow('Упозорења', r.warnings.map(w => T(w.msg)).join('\n'));

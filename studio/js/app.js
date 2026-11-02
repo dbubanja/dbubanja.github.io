@@ -13,7 +13,7 @@ import { parsePrincipalLines } from './bulk.js';
 import { getDownloadStats } from './stats.js';
 import { initInstallCounter, getReportedInstallations, INSTALL_SITE } from './install-counter.js';
 
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.0.1';
 const DEFAULT_LEGAL_BASIS = 'Закон о облигационим односима, члан 320 — трошкови, затим камата, затим главница. Текст члана провјерен у издању на gov.me (47/08, 4/11, 22/17), 02.11.2026. Примјењивост на конкретан период и однос утврђује вјештак.';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -37,6 +37,7 @@ async function init() {
   document.documentElement.dataset.theme = await getSetting('theme', 'light');
   window.addEventListener('hashchange', route);
   document.body.addEventListener('change', e => { onFieldChange(e).catch(err => toast(t('Чување није успјело') + ': ' + err.message, 'err')); });
+  for (const event of ['input','focusout']) document.body.addEventListener(event, e => { onFieldChange(e).catch(err => toast(t('Чување није успјело') + ': ' + err.message, 'err')); });
   document.body.addEventListener('click', e => { onClick(e).catch(err => toast(t('Радња није успјела') + ': ' + err.message, 'err')); });
   document.body.addEventListener('keydown', onEnterNext);
   route();
@@ -302,7 +303,7 @@ function renderPrincipals() {
   $('#tabBody').innerHTML = `
   <section class="panel">
     <div class="row-between"><h2>${t('Главнице')}</h2><button class="btn primary" data-act="add-principal">＋ ${t('Додај главницу')}</button></div>
-    <p class="small muted">${t('Почетни датум је датум од кога се обрачунава камата (уз изабрано правило бројања дана). Доспијеће је само информативно и не помјера обрачун.')}</p>
+    <p class="small muted">${t('Почетни датум је датум од кога се обрачунава камата (уз изабрано правило бројања дана). Доспијеће не помјера почетак камате; користи се при расподјели „по доспијећу“.')}</p>
     <details class="bulk no-print"><summary>${t('Унос више главница из Excel-а')}</summary><p class="small muted">${t('Копирајте колоне: износ, почетни датум (dd.mm.yyyy), опис. Без заглавља. Редови се прво провјеравају.')}</p><label class="fld">${t('Налијепите редове')}<textarea id="bulkText" rows="4" placeholder="1000,00&#9;01.01.2024&#9;Рачун 1"></textarea></label><button class="btn sm" data-act="bulk-preview">${t('Провјери редове')}</button><div id="bulkPreview"></div></details>
     <div class="items">${c.principals.map((p, i) => `
       <div class="item">
@@ -314,7 +315,7 @@ function renderPrincipals() {
           ${fld('Опис / ознака', `principals.${p.id}.label`, p.label)}
           ${fld('Износ (€)', `principals.${p.id}.amount`, p.amount, 'amount')}
           ${fld('Почетни датум обрачуна', `principals.${p.id}.start`, p.start, 'date')}
-          ${fld('Доспијеће (информативно)', `principals.${p.id}.due`, p.due, 'date')}
+          ${fld('Доспијеће (за распоред уплата)', `principals.${p.id}.due`, p.due, 'date')}
         </div>
       </div>`).join('') || `<p class="empty">${t('Нема унесених главница.')}</p>`}
     </div>
@@ -606,7 +607,7 @@ async function onFieldChange(e) {
   await saveCase();
   // освјежи приказ само кад се мијења структура (избори) или грешка
   if (bind === 'info.debtor') setTitle(nameOrEmpty(S.cur.info));
-  const needs = kind === 'select' || bad || el.closest('.fld.bad') || bind.endsWith('.label');
+  const needs = e.type !== 'input' && (kind === 'select' || bad || el.closest('.fld.bad') || bind.endsWith('.label'));
   if (needs) {
     const y = window.scrollY; const keep = S.focusBind || (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.bind);
     renderTab(); window.scrollTo(0, y);
@@ -1012,5 +1013,5 @@ function showStats(data, cached) {
 async function refreshInstallStats() {
   const box=$('#installStats');if(!box)return;
   try { const count=await getReportedInstallations();box.className='ok';box.textContent=t('Пријављене PWA инсталације од 02.11.2026: ')+count; }
-  catch(error){box.className='warn';box.textContent=t(error.message);}
+  catch(error){box.className='warn';box.textContent=t('Број пријављених инсталација тренутно није доступан. Провјерите GoatCounter налог и дозволу за јавни бројач. Подаци се не приказују као нула.');}
 }
