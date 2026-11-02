@@ -9,7 +9,7 @@ function harness(){
  const scope='https://example.test/studio/';
  const toURL=x=>new URL(typeof x==='string'?x:x.url,scope).href;
  const cache={addAll:async requests=>{for(const req of requests){const u=new URL(req.url);const name=u.pathname.replace('/studio/','')||'index.html';assert.ok(fs.existsSync(new URL(name,root)),`Missing offline asset ${name}`);cached.set(u.href,{cached:true,url:u.href});}},match:async req=>{const u=new URL(toURL(req));u.search='';return cached.get(u.href);}};
- const context={URL,Request:class{constructor(url){this.url=toURL(url)}},Response:{error:()=>({error:true})},fetch:async()=>{throw new Error('offline')},location:{origin:'https://example.test'},caches:{open:async()=>cache,keys:async()=>['zk-old','kamata-studio-old','kamata-studio-2.0.1'],delete:async key=>{deleted.push(key);}},self:{registration:{scope},clients:{claim:async()=>{claimed=true},matchAll:async()=>[]},skipWaiting:()=>{skipped=true},addEventListener:(type,f)=>handlers[type]=f}};
+ const context={URL,Request:class{constructor(url){this.url=toURL(url)}},Response:{error:()=>({error:true})},fetch:async()=>{throw new Error('offline')},location:{origin:'https://example.test'},caches:{open:async()=>cache,keys:async()=>['zk-old','kamata-studio-old','kamata-studio-2.0.2'],delete:async key=>{deleted.push(key);}},self:{registration:{scope},clients:{claim:async()=>{claimed=true},matchAll:async()=>[]},skipWaiting:()=>{skipped=true},addEventListener:(type,f)=>handlers[type]=f}};
  vm.runInNewContext(fs.readFileSync(new URL('sw.js',root),'utf8'),context);
  return {handlers,cached,deleted,get skipped(){return skipped},get claimed(){return claimed}};
 }

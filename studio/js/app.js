@@ -11,9 +11,9 @@ import { snapshotHash, verifySnapshot } from './audit.js';
 import { validateBackup } from './imports.js';
 import { parsePrincipalLines } from './bulk.js';
 import { getDownloadStats } from './stats.js';
-import { initInstallCounter, getReportedInstallations, INSTALL_SITE } from './install-counter.js';
+import { initInstallCounter, getReportedInstallations, INSTALL_SITE, INSTALL_COUNTER_ENABLED } from './install-counter.js';
 
-export const APP_VERSION = '2.0.1';
+export const APP_VERSION = '2.0.2';
 const DEFAULT_LEGAL_BASIS = 'Закон о облигационим односима, члан 320 — трошкови, затим камата, затим главница. Текст члана провјерен у издању на gov.me (47/08, 4/11, 22/17), 02.11.2026. Примјењивост на конкретан период и однос утврђује вјештак.';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -880,7 +880,7 @@ function renderAbout() {
     <p>${t('Верзија апликације')} ${APP_VERSION}, ${t('обрачунски механизам')} ${ENGINE_VERSION}.</p>
     <p>${t('Обрачун законске затезне камате по простој (линеарној) методи, са законским стопама ЦБЦГ или ручно унесеним стопама, уплатама и трошковима.')}</p>
     <ul>
-      <li>${t('Сви подаци остају на овом уређају (IndexedDB). Апликација нема налоге, аналитику посјета ни рекламе. Бројач преузимања чита јавну GitHub статистику. Пријава нове PWA инсталације шаље фиксни догађај GoatCounter-у; може се искључити у Преузимања.')}</li>
+      <li>${t('Сви подаци остају на овом уређају (IndexedDB). Апликација нема налоге, аналитику посјета ни рекламе. Бројач преузимања чита јавну GitHub статистику. Веза за бројач PWA инсталација је припремљена, али искључена док се не активира стварни налог сервиса.')}</li>
       <li>${t('Интернет је потребан само за инсталацију, ажурирања апликације и стопа и отварање изворних одлука.')}</li>
       <li>${t('Резултат је помоћно средство; вјештак је одговоран за провјеру улазних података, стопа и примијењених правила.')}</li>
     </ul>
@@ -990,7 +990,7 @@ function saveRateEdit() {
 async function renderStats() {
   applyStaticTexts(); setTitle(t('Преузимања'));
   const reportInstall = await getSetting('reportInstall',true);
-  setMain(`<section class="panel prose"><span class="eyebrow">${t('ДИСТРИБУЦИЈА АПЛИКАЦИЈЕ')}</span><h1>${t('Преузимања')}</h1><p>${t('Јавни подаци GitHub-а за APK издања Камата Студио. Провјера не шаље имена, обрачуне или податке о вашем уређају из апликације.')}</p><button class="btn primary" data-act="refresh-stats">↻ ${t('Освјежи бројач')}</button><div id="downloadStats"><p>${t('Провјеравам…')}</p></div></section><section class="panel prose"><h2>${t('Шта овај број значи')}</h2><p>${t('Бројач сабира преузимања APK датотека из GitHub Releases. Поновљено преузимање се рачуна поново. Датотеке подијељене преко Vibera, имејла или других сајтова нијесу обухваћене.')}</p><p><b>${t('PWA: само пријављене нове инсталације.')}</b> ${t('Инсталације из Chrome-а, Edge-а и Safari-ја нијесу APK преузимања. Не постоји потпуна историјска евиденција; број преузимања није број људи нити доказ инсталације.')}</p><div id="installStats" class="warn">${t('Провјера пријављених инсталација…')}</div><p class="small">${t('При инсталацији се постојећем GoatCounter сервису шаље само фиксни назив догађаја. Не шаљу се обрачуни, имена, износи, адреса извјештаја или величина екрана. Сервис обрађује мрежне податке захтјева (IP/прегледач). Неки прегледачи и блокатори не пријављују инсталацију; ово није потпун број корисника.')}</p><button class="btn sm" data-act="toggle-install-counter">${t(reportInstall ? 'Искључи пријаву инсталације на овом уређају' : 'Укључи пријаву инсталације на овом уређају')}</button><p><a href="${INSTALL_SITE}" target="_blank" rel="noopener noreferrer">${t('Отвори статистику власника')} ↗</a></p></section>`);
+  setMain(`<section class="panel prose"><span class="eyebrow">${t('ДИСТРИБУЦИЈА АПЛИКАЦИЈЕ')}</span><h1>${t('Преузимања')}</h1><p>${t('Јавни подаци GitHub-а за APK издања Камата Студио. Провјера не шаље имена, обрачуне или податке о вашем уређају из апликације.')}</p><button class="btn primary" data-act="refresh-stats">↻ ${t('Освјежи бројач')}</button><div id="downloadStats"><p>${t('Провјеравам…')}</p></div></section><section class="panel prose"><h2>${t('Шта овај број значи')}</h2><p>${t('Бројач сабира преузимања APK датотека из GitHub Releases. Поновљено преузимање се рачуна поново. Датотеке подијељене преко Vibera, имејла или других сајтова нијесу обухваћене.')}</p><p><b>${t('PWA: само пријављене нове инсталације.')}</b> ${t('Инсталације из Chrome-а, Edge-а и Safari-ја нијесу APK преузимања. Не постоји потпуна историјска евиденција; број преузимања није број људи нити доказ инсталације.')}</p><div id="installStats" class="warn">${t('Провјера пријављених инсталација…')}</div>${INSTALL_COUNTER_ENABLED ? `<p class="small">${t('Сервису се шаље само фиксни назив догађаја инсталације, без обрачунских података. Сервис обрађује мрежне IP/прегледач податке. Блокатори и неподржани прегледачи умањују покривеност.')}</p><button class="btn sm" data-act="toggle-install-counter">${t(reportInstall ? 'Искључи пријаву инсталације на овом уређају' : 'Укључи пријаву инсталације на овом уређају')}</button><p><a href="${INSTALL_SITE}" target="_blank" rel="noopener noreferrer">${t('Отвори статистику власника')} ↗</a></p>` : `<p class="small muted">${t('Бројач инсталација је припремљен, али искључен. Адреса GoatCounter-а из старе апликације није регистрована. Потребно је активирати и провјерити налог сервиса; до тада се догађаји инсталације не шаљу.')}</p>`}</section>`);
   await Promise.all([refreshStats(), refreshInstallStats()]);
 }
 async function refreshStats() {
@@ -1013,5 +1013,5 @@ function showStats(data, cached) {
 async function refreshInstallStats() {
   const box=$('#installStats');if(!box)return;
   try { const count=await getReportedInstallations();box.className='ok';box.textContent=t('Пријављене PWA инсталације од 02.11.2026: ')+count; }
-  catch(error){box.className='warn';box.textContent=t('Број пријављених инсталација тренутно није доступан. Провјерите GoatCounter налог и дозволу за јавни бројач. Подаци се не приказују као нула.');}
+  catch(error){box.className='warn';box.textContent=t('Број пријављених инсталација није доступан. Потребан је активан налог сервиса и дозвола за јавни бројач. Ово није нула инсталација.');}
 }
