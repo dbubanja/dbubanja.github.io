@@ -1,10 +1,10 @@
 // Service worker: офлајн рад. Нова верзија се активира тек кад корисник кликне „Освјежи“.
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'zk-' + VERSION;
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'rates.json', 'Pregled_stopa_CBCG.html',
   'js/app.js', 'js/engine.js', 'js/rational.js', 'js/dates.js', 'js/parse.js', 'js/storage.js', 'js/rates.js',
-  'js/serialize.js', 'js/i18n.js', 'js/xlsx-export.js', 'lib/exceljs.min.js',
+  'js/serialize.js', 'js/i18n.js', 'js/stats.js', 'js/xlsx-export.js', 'lib/exceljs.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'css/fonts.css',
   'fonts/golos-text-cyrillic-400-normal.woff2',
   'fonts/golos-text-cyrillic-500-normal.woff2',

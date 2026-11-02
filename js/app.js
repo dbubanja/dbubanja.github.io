@@ -7,8 +7,9 @@ import { store, getSetting, setSetting, uid, requestPersistence } from './storag
 import { validateRatesFile, diffRates } from './rates.js';
 import { toPlain, fromPlain } from './serialize.js';
 import { t, setScript, getScript, toLatin } from './i18n.js';
+import { countEvent } from './stats.js';
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 const DEFAULT_LEGAL_BASIS = 'Закон о облигационим односима („Сл. лист ЦГ“ бр. 47/08, 4/11, 22/17) — одредба о урачунавању трошкова, камата и главнице. Број члана није провјерен приликом израде апликације; унесите га прије употребе у налазу.';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -34,6 +35,9 @@ async function init() {
   document.body.addEventListener('keydown', onEnterNext);
   route();
   registerSW();
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  countEvent(standalone ? '/otvaranje-instalirana' : '/otvaranje-preglednik');
+  window.addEventListener('appinstalled', () => countEvent('/instalirana'));
 }
 
 async function loadOfficialRates() {
@@ -835,7 +839,7 @@ function renderAbout() {
     <p>${t('Верзија апликације')} ${APP_VERSION}, ${t('обрачунски механизам')} ${ENGINE_VERSION}.</p>
     <p>${t('Обрачун законске затезне камате по простој (линеарној) методи, са законским стопама ЦБЦГ или ручно унесеним стопама, уплатама и трошковима.')}</p>
     <ul>
-      <li>${t('Сви подаци остају на овом уређају (IndexedDB). Апликација нема налоге, аналитику ни рекламе.')}</li>
+      <li>${t('Сви подаци о обрачунима остају на овом уређају (IndexedDB). Апликација нема налоге ни рекламе.')}</li>
       <li>${t('Интернет је потребан само за инсталацију, ажурирања апликације и стопа и отварање изворних одлука.')}</li>
       <li>${t('Резултат је помоћно средство; вјештак је одговоран за провјеру улазних података, стопа и примијењених правила.')}</li>
     </ul>
